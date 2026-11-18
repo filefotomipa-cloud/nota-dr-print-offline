@@ -48,7 +48,6 @@ button{border:0;border-radius:10px;padding:12px 14px;font:600 14px inherit;curso
  .brand{font-family:Georgia,serif;font-size:25px;font-weight:bold;text-decoration:underline;margin-bottom:5px}
  .address{font-size:12px;line-height:1.45}
  .meta{font-size:12px;line-height:1.7;min-width:190px}
- .watermark{position:absolute;top:55mm;left:10%;font:bold italic 68px Arial;color:#eee;transform:rotate(-8deg);z-index:0;white-space:nowrap}
  .note-no{font-size:13px;margin:18px 0 4px}
  table{border-collapse:collapse;width:100%;font-size:12px;position:relative;z-index:1}
  th,td{border:1px solid #222;padding:5px;vertical-align:top}
@@ -160,7 +159,6 @@ function printNote(){
  $("printArea").innerHTML=`<section class="paper">
  <div class="head"><div><div class="brand">CV. DR Print</div><div class="address">Jalan Serai No. 17 RT.01 RW.02 Kel. Komet Banjarbaru<br>HP. 085100780159 (WhatsApp)<br>NPWP : 80.209.489.6-732.000</div></div>
  <div class="meta">Tanggal: ${esc(date)}<br>Kepada Yth.<br><b>${esc(p.pelanggan)}</b><br>${esc(p.alamat).replace(/\n/g,"<br>")}</div></div>
- <div class="watermark">DR PRINT</div>
  <div class="note-no">No Nota Service : ${esc(p.nota)}</div>
  <table><thead><tr><th style="width:5%">No</th><th style="width:17%">Nama Barang</th><th style="width:28%">Kerusakan</th><th style="width:32%">Perbaikan</th><th style="width:18%">Jumlah</th></tr></thead><tbody>${rows}</tbody>
  <tfoot><tr class="totalrow"><td colspan="4" style="text-align:right">TOTAL</td><td class="amount">Rp. <span style="float:right">${total.toLocaleString("id-ID")}</span></td></tr></tfoot></table>
