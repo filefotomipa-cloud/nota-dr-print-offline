@@ -90,7 +90,8 @@ button{border:0;border-radius:10px;padding:12px 14px;font:600 14px inherit;curso
 </section>
 <section class="panel">
 <h2>Foto Barang (dicetak di halaman kedua)</h2>
-<div class="field"><label>Pilih foto dari kamera atau galeri iPhone</label><input id="foto" type="file" accept="image/*" capture="environment"></div>
+<div class="field"><label>Pilih foto dari kamera atau galeri iPhone</label><input id="foto" type="file" accept="image/*"></div>
+<p id="photoStatus" class="small">Pilih foto dari Photos, Files, atau ambil foto baru.</p>
 <img id="photoPreview" class="photo-preview" hidden alt="Pratinjau foto barang">
 <p class="small">Foto disimpan di perangkat dan dicetak pada lembar kedua. Tidak ada geotag yang ditambahkan.</p>
 </section>
@@ -102,10 +103,10 @@ button{border:0;border-radius:10px;padding:12px 14px;font:600 14px inherit;curso
 <h2>Simpan dan Cetak</h2>
 <div class="actions">
 <button class="primary" id="save" type="button">Simpan Nota</button>
-<button class="secondary" id="print" type="button">Pratinjau / Cetak</button>
+<button class="secondary" id="print" type="button">Buka Halaman Cetak</button>
 <button class="secondary" id="new" type="button">Nota Baru</button>
 </div>
-<p class="small">Gunakan tombol Bagikan/Cetak pada iPhone, lalu pilih printer AirPrint atau Simpan ke File sebagai PDF.</p>
+<p class="small">Di iPhone, tombol ini membuka halaman cetak baru. Tekan Cetak / Simpan PDF di halaman tersebut, lalu pilih printer AirPrint atau Simpan ke File.</p>
 </section>
 <section class="panel">
 <h2>Arsip Nota di Perangkat</h2>
@@ -140,7 +141,20 @@ function addItem(data={}) {
 function getItems(){return [...$("items").children].map(x=>({nama:x.querySelector(".nama").value,rusak:x.querySelector(".rusak").value,repair:x.querySelector(".repair").value,harga:Number(x.querySelector(".harga").value)||0}))}
 function calc(){$("totalText").textContent=rupiah(getItems().reduce((s,x)=>s+x.harga,0))}
 function readFile(file,cb){if(!file)return;const r=new FileReader();r.onload=()=>cb(r.result);r.readAsDataURL(file)}
-$("foto").onchange=e=>readFile(e.target.files[0],v=>{photoData=v;$("photoPreview").src=v;$("photoPreview").hidden=false});
+$("foto").addEventListener("change", e => {
+ const file = e.target.files && e.target.files[0];
+ if (!file) return;
+ if (!file.type || !file.type.startsWith("image/")) { alert("Pilih file foto berupa gambar, misalnya JPG atau PNG."); return; }
+ const reader = new FileReader();
+ reader.onload = () => {
+   photoData = reader.result;
+   $("photoPreview").src = photoData;
+   $("photoPreview").hidden = false;
+   $("photoStatus").textContent = "Foto dipilih: " + file.name;
+ };
+ reader.onerror = () => alert("Foto tidak dapat dibaca. Coba pilih foto lain dari galeri.");
+ reader.readAsDataURL(file);
+});
 $("addItem").onclick=()=>addItem();addItem();
 function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open("DRPrintDB",1);r.onupgradeneeded=()=>r.result.createObjectStore("notes",{keyPath:"id",autoIncrement:true});r.onsuccess=()=>{db=r.result;resolve(db)};r.onerror=()=>reject(r.error)})}
 function tx(mode){return db.transaction("notes",mode).objectStore("notes")}
@@ -156,7 +170,7 @@ function printNote(){
  const stamp=`<img class="stamp-img" src="${stampImage}" alt="Stempel DR Print">`;
  const signature=`<img class="signature-img" src="${signatureImage}" alt="Tanda tangan">`;
  const date=p.tanggal?new Date(p.tanggal+"T00:00:00").toLocaleDateString("id-ID",{day:"2-digit",month:"long",year:"numeric"}):"";
- $("printArea").innerHTML=`<section class="paper">
+ const markup=`<section class="paper">
  <div class="head"><div><div class="brand">CV. DR Print</div><div class="address">Jalan Serai No. 17 RT.01 RW.02 Kel. Komet Banjarbaru<br>HP. 085100780159 (WhatsApp)<br>NPWP : 80.209.489.6-732.000</div></div>
  <div class="meta">Tanggal: ${esc(date)}<br>Kepada Yth.<br><b>${esc(p.pelanggan)}</b><br>${esc(p.alamat).replace(/\n/g,"<br>")}</div></div>
  <div class="note-no">No Nota Service : ${esc(p.nota)}</div>
@@ -165,9 +179,37 @@ function printNote(){
  <div class="bottom"><div class="services"><b>Kami Melayani:</b><br>- Penjualan Printer/Komputer/ATK<br>- Isi Tinta Printer<br>- Pemasangan Infus<br>- Service Printer / Komputer / Laptop<br>- Instal Ulang Komputer / Laptop<br>- Rental Laptop / Printer</div>
  <div class="sign"><div class="signcol">Customer,<div class="sigline"></div></div><div class="signcol">Hormat Kami,<div class="stamp-sign">${stamp}${signature}</div><b>Muhammad Alie Wibisono</b></div></div></div>
  </section>
- <section class="paper photo-sheet"><div class="photo-title">FOTO BARANG — NOTA ${esc(p.nota)}</div>${p.photoData?`<img src="${p.photoData}" alt="Foto barang">`:"<p>Belum ada foto barang yang diunggah.</p>"}</section>`;
- setTimeout(()=>window.print(),250);
+ <section class="paper photo-sheet"><div class="photo-title">FOTO BARANG — NOTA ${esc(p.nota)}</div>${p.photoData?`<img src="${p.photoData}" alt="Foto barang">`:`<p>Belum ada foto barang yang diunggah.</p>`}</section>`;
+ const printCss=`
+ @page{size:A4 portrait;margin:12mm}
+ *{box-sizing:border-box} body{margin:0;background:#eee;color:#111;font-family:"Times New Roman",serif}
+ .toolbar{position:sticky;top:0;background:#222;color:white;padding:12px;display:flex;gap:10px;align-items:center;z-index:2;font:14px -apple-system,BlinkMacSystemFont,Arial,sans-serif}
+ .toolbar button{border:0;border-radius:8px;padding:11px 16px;font-weight:700;background:#b50918;color:white}
+ .hint{font-size:12px;opacity:.9}.paper{background:white;width:210mm;min-height:273mm;margin:12px auto;padding:0;page-break-after:always;break-after:page;position:relative}
+ .paper:last-child{page-break-after:auto;break-after:auto}
+ .head{display:flex;justify-content:space-between;gap:15px}.brand{font-family:Georgia,serif;font-size:25px;font-weight:bold;text-decoration:underline;margin-bottom:5px}
+ .address{font-size:12px;line-height:1.45}.meta{font-size:12px;line-height:1.7;min-width:190px}.note-no{font-size:13px;margin:18px 0 4px}
+ table{border-collapse:collapse;width:100%;font-size:12px}th,td{border:1px solid #222;padding:5px;vertical-align:top}th{text-align:center}.amount{text-align:right;white-space:nowrap}.totalrow td{font-weight:bold}
+ .bottom{display:flex;justify-content:space-between;gap:18px;margin-top:14px;font-size:12px}.services{width:45%;line-height:1.35}.services b{color:#152c9b;font-size:14px}
+ .sign{width:52%;display:flex;justify-content:space-between;text-align:center}.signcol{width:48%;min-height:90px;position:relative}.stamp-sign{height:67px;width:170px;margin:0 auto;position:relative}
+ .stamp-img{position:absolute;left:0;top:0;width:72px;height:67px;object-fit:contain}.signature-img{position:absolute;left:34px;top:0;width:130px;height:67px;object-fit:contain}.sigline{margin-top:62px;border-bottom:1px dotted #222}
+ .photo-title{font-size:18px;font-weight:bold;margin:0 0 10px}.photo-sheet{height:245mm;display:flex;flex-direction:column;align-items:center}.photo-sheet img{max-width:100%;max-height:225mm;object-fit:contain}
+ @media screen{.paper{padding:12mm;box-shadow:0 2px 12px #0003}.photo-sheet{margin-top:18px}}
+ @media print{body{background:white}.toolbar{display:none!important}.paper{width:auto;min-height:270mm;margin:0;padding:0;box-shadow:none}.photo-sheet{height:245mm}}
+ `;
+ // Open synchronously from the tap. On iPhone the new page exposes a real Print button,
+ // avoiding Safari/PWA blocking window.print() after a timer or async callback.
+ const win=window.open("", "_blank");
+ if(!win){
+   alert("Browser memblokir tab cetak. Buka aplikasi melalui Safari, izinkan pop-up untuk situs ini, lalu tekan Cetak lagi.");
+   return;
+ }
+ win.document.open();
+ win.document.write(`<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Nota ${esc(p.nota)} - DR Print</title><style>${printCss}</style></head><body><div class="toolbar"><button onclick="window.print()">Cetak / Simpan PDF</button><span class="hint">Di iPhone: tekan Cetak, lalu pilih printer AirPrint atau bagikan/simpan PDF.</span></div>${markup}</body></html>`);
+ win.document.close();
+ win.focus();
 }
+
 $("print").onclick=printNote;
 $("new").onclick=()=>{if(!confirm("Mulai nota baru? Pastikan nota sekarang sudah disimpan jika diperlukan."))return;$("nota").value="";$("pelanggan").value="";$("alamat").value="";$("tanggal").value=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);$("items").innerHTML="";addItem();photoData="";$("foto").value="";$("photoPreview").hidden=true};
 openDB().then(listNotes).catch(()=>{$("savedList").textContent="Penyimpanan lokal tidak tersedia pada browser ini."});
